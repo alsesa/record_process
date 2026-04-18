@@ -4,10 +4,11 @@ import re
 import subprocess
 from pathlib import Path
 
+from pydub import AudioSegment
 from opencc import OpenCC
 
 from logging_config import setup_logging
-from transcribe_media import extract_or_convert_audio, transcribe_audio_funasr
+from transcribe_media import extract_or_convert_audio, transcribe_audio_funasr, transcribe_audio_funasr_batch
 
 logger = setup_logging()
 opencc_converter = OpenCC("t2s")
@@ -62,7 +63,14 @@ def process_file(file_path: Path):
             logger.warning(f"No audio track in {filename}, skipping")
             return
 
-        transcript = transcribe_audio_funasr(audio_file)
+        # Check audio duration: <=30s use batch, >30s use full model with VAD
+        audio_duration_ms = len(AudioSegment.from_file(audio_file))
+        if audio_duration_ms <= 30_000:
+            logger.info(f"Audio <= 30s, using batch transcription")
+            transcript = transcribe_audio_funasr_batch(audio_file)
+        else:
+            logger.info(f"Audio > 30s ({audio_duration_ms / 1000:.1f}s), using VAD transcription")
+            transcript = transcribe_audio_funasr(audio_file)
         logger.info(f"Transcription complete: {filename}")
     except Exception as e:
         logger.error(f"Failed to transcribe {filename}: {e}")
