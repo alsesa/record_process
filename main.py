@@ -55,6 +55,16 @@ def process_file(file_path: Path):
     filename = file_path.name
     logger.info(f"Processing: {filename}")
 
+    # Check if transcript already exists
+    date_str = parse_date(filename)
+    if date_str:
+        txt_path = CONTENT_DIR / date_str / (file_path.stem + ".txt")
+    else:
+        txt_path = file_path.with_suffix(".txt")
+    if txt_path.exists():
+        logger.info(f"Transcript already exists, skipping: {txt_path}")
+        return
+
     # Transcribe
     audio_file = None
     try:
@@ -88,7 +98,6 @@ def process_file(file_path: Path):
         transcript = f"Record Time: {timestamp}\n{transcript}"
 
     # Save transcript to content/{date}/ folder
-    date_str = parse_date(filename)
     if date_str:
         dest_folder = CONTENT_DIR / date_str
         dest_folder.mkdir(parents=True, exist_ok=True)
